@@ -4,3 +4,5 @@
 /.vs/
 /packages/
 /EFMappingChecker/EFMappingChecker.csproj.user
+/EFMappingChecker.Tests/bin/
+/EFMappingChecker.Tests/obj/
