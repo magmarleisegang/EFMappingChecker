@@ -12,18 +12,20 @@ namespace EFMappingChecker
     public class MappingChecker
     {
         public MappingChecker()
-        { }
+        {
+            _exclusionList = new List<string>();
+        }
 
         public string ConnectionString { get { return _connectionString; } set { _connectionString = value; } }
-        public string DllToTest { set { _dllToTest = value; } }
+        public string DllToTest { get { return _dllToTest; } set { _dllToTest = value; } }
 
         public string ResultFilePath { get; internal set; }
 
         public MappingChecker(List<string> dllFiles, string testDbConnectionString)
+          : this()
         {
             _dllFiles = dllFiles;
             _connectionString = testDbConnectionString;
-            _exclusionList = new List<string>();
         }
 
         private List<string> _exclusionList;
@@ -50,6 +52,7 @@ namespace EFMappingChecker
         {
             IEnumerable<Type> dbContextTypes = GetDbContextTypes(dllFile);
             var dbContextEnumerator = dbContextTypes.GetEnumerator();
+
             DbContext dbContext;
             while (GetNextDbContext(dbContextEnumerator, out dbContext))
             {
@@ -86,7 +89,8 @@ namespace EFMappingChecker
         public void TestDbContext(DbContext dbContext)
         {
             var dbContextName = dbContext.GetType().FullName;
-            string reportPath = GetResultFilePath(dbContextName);
+            SetResultFilePath(dbContextName);
+            string reportPath = ResultFilePath;
 
             int dbSetCount = 0;
             int errorCount = 0;
@@ -160,11 +164,11 @@ namespace EFMappingChecker
             }
         }
 
-        private string GetResultFilePath(object dbContextName)
+        private void SetResultFilePath(object dbContextName)
         {
             var defaultFileName = System.IO.Path.Combine("c:\\test", string.Format("EF test output {0}_{1:yyMMddHHmm}.txt", dbContextName, DateTime.Now));
             if (string.IsNullOrEmpty(ResultFilePath))
-                return  defaultFileName;
+                ResultFilePath = defaultFileName;
             else if (Directory.Exists(Path.GetDirectoryName(ResultFilePath)) == false)
             {
                 try
@@ -173,10 +177,9 @@ namespace EFMappingChecker
                 }
                 catch
                 {
-                    return defaultFileName;
+                    ResultFilePath = defaultFileName;
                 }
             }
-            return ResultFilePath;
         }
 
         public bool GetNextDbContext(IEnumerator<Type> dbContextTypes, out DbContext nextDbContext)
@@ -200,10 +203,18 @@ namespace EFMappingChecker
             if (File.Exists(dllFile))
             {
                 Assembly asm = Assembly.LoadFrom(dllFile);
-                var dbContextTypes = asm.ExportedTypes.Where(type => type.IsSubclassOf(typeof(DbContext)));
-                return dbContextTypes;
+                if (asm.ExportedTypes.Any(type => type.IsSubclassOf(typeof(DbContext))))
+                {
+                    var dbContextTypes = asm.ExportedTypes.Where(type => type.IsSubclassOf(typeof(DbContext)));
+                    return dbContextTypes;
+                }
+                else
+                {
+                    throw new DbContextsNotFoundException(asm.FullName);
+
+                }
             }
-            throw new Exception("No classes inheriting System.Data.Entity.DbContext found in the assembly");
+            throw new FileNotFoundException("Dll file not found", dllFile);
         }
 
         private bool InExclusionList(PropertyInfo set)
