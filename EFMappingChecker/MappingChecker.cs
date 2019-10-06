@@ -98,8 +98,7 @@ namespace EFMappingChecker
                 var resultFileHeader = ASCIIEncoding.ASCII.GetBytes(string.Format("Testing {0}\n\n", dbContextName));
                 textOutputWriter.Write(resultFileHeader);
                 var dbContextType = dbContext.GetType();
-                //dbContext.ChangeHistories.Find();
-                //get all dbsets on the dbCOntext
+
                 var properties = dbContextType.GetProperties();
                 var dbSets = properties.Where(p => p.PropertyType.Name == "DbSet`1");
                 foreach (var set in dbSets)
