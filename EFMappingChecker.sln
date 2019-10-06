@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.421
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFMappingChecker", "EFMappingChecker\EFMappingChecker.csproj", "{D5A628F6-04EC-4EC4-96A2-EFB8C50D3C0E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFMappingChecker.Tests", "EFMappingChecker.Tests\EFMappingChecker.Tests.csproj", "{A8889406-D2FB-40A4-AD93-C38D175E607E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{D5A628F6-04EC-4EC4-96A2-EFB8C50D3C0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D5A628F6-04EC-4EC4-96A2-EFB8C50D3C0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D5A628F6-04EC-4EC4-96A2-EFB8C50D3C0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8889406-D2FB-40A4-AD93-C38D175E607E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8889406-D2FB-40A4-AD93-C38D175E607E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8889406-D2FB-40A4-AD93-C38D175E607E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8889406-D2FB-40A4-AD93-C38D175E607E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
