@@ -189,13 +189,14 @@ namespace EFMappingChecker
                 .MetadataProperties
                 .Where(mp => mp.Name == "KeyMembers")
                 .SelectMany(mp => mp.Value as ReadOnlyMetadataCollection<EdmMember>)
-                .OfType<EdmProperty>().Select(ep => ep.PrimitiveType);
+                .OfType<EdmProperty>().Select(ep =>new { ep.Name, ep.PrimitiveType });
 
             var parameterList = new object[primaryKeyTypes.Count()];
             var i = 0;
+            var errors = new List<UnsupportedPrimaryKeyPrimitiveType>();
             foreach (var pkType in primaryKeyTypes)
             {
-                switch (pkType.PrimitiveTypeKind)
+                switch (pkType.PrimitiveType.PrimitiveTypeKind)
                 {
                     case PrimitiveTypeKind.Double:
                         parameterList[i] = 1.00;
@@ -219,11 +220,13 @@ namespace EFMappingChecker
                         parameterList[i] = "1";
                         break;
                     default:
-                        throw new UnsupportedPrimaryKeyPrimitiveTypeException(pkType.PrimitiveTypeKind);
+                        errors.Add(new UnsupportedPrimaryKeyPrimitiveType(pkType.Name, pkType.PrimitiveType.PrimitiveTypeKind));
+                        break;
                 }
                 i++;
             }
-
+            if (errors.Count > 0)
+                throw new UnsupportedPrimaryKeyPrimitiveTypeException(errors);
             return parameterList;
         }
 
