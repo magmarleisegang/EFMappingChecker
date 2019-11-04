@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Data.Entity.Core.Metadata.Edm;
+using System.Data.Entity.Core.Objects;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -104,36 +106,48 @@ namespace EFMappingChecker
                 var dbContextType = dbContext.GetType();
 
                 var properties = dbContextType.GetProperties();
-                var dbSets = properties.Where(p => p.PropertyType.Name == "DbSet`1");
-                foreach (var set in dbSets)
+                var objectContext = ((System.Data.Entity.Infrastructure.IObjectContextAdapter)dbContext).ObjectContext;
+
+                var dbSetPropertyInfos = properties.Where(p => p.PropertyType.Name == "DbSet`1");
+                foreach (var dbSetPropertyInfo in dbSetPropertyInfos)
                 {
                     dbSetCount++;
-                    Debug.WriteLine(set.Name);
-                    if (InExclusionList(set))
+                    Debug.WriteLine(dbSetPropertyInfo.Name);
+                    if (InExclusionList(dbSetPropertyInfo))
                     {
                         excludedCount++;
-                        Debug.WriteLine(set.Name + " excluded");
+                        Debug.WriteLine(dbSetPropertyInfo.Name + " excluded");
 
                         continue;
                     }
-                    var setType = set.GetType();
-                    var value = set.GetValue(dbContext);
-                    var findMethod = value.GetType().GetMethod("Find");
-                    //var getMethod = set.GetMethod;
-                    //var returnParameter = getMethod.ReturnParameter;
-                    //var parameterType = returnParameter.ParameterType;
-                    //var baseType = parameterType.GenericTypeArguments.First();
-                    //var name = baseType.FullName;
-                    object[] parametersArray = new object[1] { 1 };
+
+                    var dbSetValue = dbSetPropertyInfo.GetValue(dbContext);
+
+
+                    var findMethod = dbSetValue.GetType().GetMethod("Find");
                     try
                     {
-                        findMethod.Invoke(value, new object[] { parametersArray });
+                        var parametersArray = GetPrimaryKeys(objectContext, dbSetValue);
+
+                        findMethod.Invoke(dbSetValue, new object[] { parametersArray });
+                    }
+                    catch(UnsupportedPrimaryKeyPrimitiveTypeException te)
+                    {
+                        errorCount++;
+                        StringBuilder errorMessage = new StringBuilder();
+                        errorMessage.AppendLine(dbSetPropertyInfo.Name);
+
+                        errorMessage.AppendLine(te.ToString());
+
+                        errorMessage.AppendLine(" ");
+                        var byteArray = ASCIIEncoding.ASCII.GetBytes(errorMessage.ToString());
+                        textOutputWriter.Write(byteArray);
                     }
                     catch (TargetInvocationException ex)
                     {
                         errorCount++;
                         StringBuilder errorMessage = new StringBuilder();
-                        errorMessage.AppendLine(set.Name);
+                        errorMessage.AppendLine(dbSetPropertyInfo.Name);
 
                         if (ex.InnerException != null && ex.InnerException.InnerException != null)
                         {
@@ -162,6 +176,55 @@ namespace EFMappingChecker
                 textOutputWriter.Write(resultSummaryBytes);
                 textOutputWriter.Flush();
             }
+        }
+
+        private object[] GetPrimaryKeys(ObjectContext objectContext, object dbSetValue)
+        {
+            var dbSetType = dbSetValue.GetType();
+            var entityType = dbSetType.GenericTypeArguments[0];
+
+
+            var primaryKeyTypes = objectContext.MetadataWorkspace
+                .GetType(entityType.Name, entityType.Namespace, System.Data.Entity.Core.Metadata.Edm.DataSpace.OSpace)
+                .MetadataProperties
+                .Where(mp => mp.Name == "KeyMembers")
+                .SelectMany(mp => mp.Value as ReadOnlyMetadataCollection<EdmMember>)
+                .OfType<EdmProperty>().Select(ep => ep.PrimitiveType);
+
+            var parameterList = new object[primaryKeyTypes.Count()];
+            var i = 0;
+            foreach (var pkType in primaryKeyTypes)
+            {
+                switch (pkType.PrimitiveTypeKind)
+                {
+                    case PrimitiveTypeKind.Double:
+                        parameterList[i] = 1.00;
+                        break;
+                    case PrimitiveTypeKind.Guid:
+                        parameterList[i] = System.Guid.NewGuid();
+                        break;
+                    case PrimitiveTypeKind.Int16:
+                        parameterList[i] = (short)1;
+
+                        break;
+                    case PrimitiveTypeKind.Int32:
+                        parameterList[i] = 1;
+
+                        break;
+                    case PrimitiveTypeKind.Int64:
+                        parameterList[i] = (long)1;
+
+                        break;
+                    case PrimitiveTypeKind.String:
+                        parameterList[i] = "1";
+                        break;
+                    default:
+                        throw new UnsupportedPrimaryKeyPrimitiveTypeException(pkType.PrimitiveTypeKind);
+                }
+                i++;
+            }
+
+            return parameterList;
         }
 
         private void SetResultFilePath(object dbContextName)
@@ -211,7 +274,6 @@ namespace EFMappingChecker
                 else
                 {
                     throw new DbContextsNotFoundException(asm.FullName);
-
                 }
             }
             throw new FileNotFoundException("Dll file not found", dllFile);
