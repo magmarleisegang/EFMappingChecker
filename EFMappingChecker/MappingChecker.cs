@@ -165,10 +165,6 @@ namespace EFMappingChecker
                         errorMessage.AppendLine(" ");
                         var byteArray = ASCIIEncoding.ASCII.GetBytes(errorMessage.ToString());
                         textOutputWriter.Write(byteArray);
-
-                        //Debug.WriteLine(set.Name + " failed");
-                        //Debug.WriteLine(set.Name+": "+ex.InnerException.Message);
-                        //throw ex.InnerException;
                     }
                 }
                 var resultSummary = string.Format("Tested {0} DbSets. {1} passed, {2} exluced, {3} failed", dbSetCount, dbSetCount - excludedCount - errorCount, excludedCount, errorCount);
@@ -218,6 +214,15 @@ namespace EFMappingChecker
                         break;
                     case PrimitiveTypeKind.String:
                         parameterList[i] = "1";
+                        break;
+                    case PrimitiveTypeKind.Boolean:
+                        parameterList[i] = true;
+                        break;
+                    case PrimitiveTypeKind.DateTime:
+                        parameterList[i] = DateTime.Now;
+                        break;
+                    case PrimitiveTypeKind.Decimal:
+                        parameterList[i] = 1M;
                         break;
                     default:
                         errors.Add(new UnsupportedPrimaryKeyPrimitiveType(pkType.Name, pkType.PrimitiveType.PrimitiveTypeKind));
