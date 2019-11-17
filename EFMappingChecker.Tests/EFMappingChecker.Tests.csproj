@@ -56,8 +56,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DbContextFinderTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tests.cs" />
+    <Compile Include="MappingCheckerTests.cs" />
+    <Compile Include="StoredProcTesterTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
