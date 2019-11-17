@@ -72,10 +72,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DbContextFinder.cs" />
     <Compile Include="DbContextsNotFoundException.cs" />
     <Compile Include="MappingChecker.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StoredProcedureTester.cs" />
     <Compile Include="UnsupportedPrimaryKeyPrimitiveTypeException.cs" />
   </ItemGroup>
   <ItemGroup>

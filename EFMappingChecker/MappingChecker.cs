@@ -16,6 +16,7 @@ namespace EFMappingChecker
         public MappingChecker()
         {
             _exclusionList = new List<string>();
+            _dbContextFinder = new DbContextFinder();
         }
 
         public string ConnectionString { get { return _connectionString; } set { _connectionString = value; } }
@@ -34,6 +35,7 @@ namespace EFMappingChecker
         private readonly List<string> _dllFiles;
         private string _connectionString;
         private string _dllToTest;
+        private DbContextFinder _dbContextFinder;
 
         public void SetupExclusionList(params string[] classesToExclude)
         {
@@ -52,11 +54,9 @@ namespace EFMappingChecker
 
         public void TestAssemblyDbContexts(string dllFile)
         {
-            IEnumerable<Type> dbContextTypes = GetDbContextTypes(dllFile);
-            var dbContextEnumerator = dbContextTypes.GetEnumerator();
+            _dbContextFinder.LoadDbContextTypes(dllFile);
 
-            DbContext dbContext;
-            while (GetNextDbContext(dbContextEnumerator, out dbContext))
+            while (_dbContextFinder.GetNextDbContext(_connectionString, out DbContext dbContext))
             {
                 TestDbContext(dbContext);
             }
@@ -69,24 +69,11 @@ namespace EFMappingChecker
 
         public void TestSpecificDbContext(string dllFile, string dbContextName)
         {
-            IEnumerable<Type> dbContextTypes = GetDbContextTypes(dllFile);
-            DbContext dbContext = GetSpecificDbContext(dbContextTypes, dbContextName);
+            _dbContextFinder.LoadDbContextTypes(dllFile);
+            DbContext dbContext = _dbContextFinder.GetSpecificDbContext(dbContextName, _connectionString);
             TestDbContext(dbContext);
         }
 
-        private DbContext GetSpecificDbContext(IEnumerable<Type> dbContextTypes, string dbContextName)
-        {
-            var enumerator = dbContextTypes.GetEnumerator();
-            while (enumerator.MoveNext())
-            {
-                if (enumerator.Current.Name.Equals(dbContextName))
-                {
-                    var constructor = enumerator.Current.GetConstructor(new[] { typeof(string) });
-                    return (DbContext)constructor.Invoke(new object[] { _connectionString });
-                }
-            }
-            throw new Exception(string.Format("Failed to get specific DbContext: {0}", dbContextName));
-        }
 
         public void TestDbContext(DbContext dbContext)
         {
@@ -131,7 +118,7 @@ namespace EFMappingChecker
 
                         findMethod.Invoke(dbSetValue, new object[] { parametersArray });
                     }
-                    catch(UnsupportedPrimaryKeyPrimitiveTypeException te)
+                    catch (UnsupportedPrimaryKeyPrimitiveTypeException te)
                     {
                         errorCount++;
                         StringBuilder errorMessage = new StringBuilder();
@@ -185,7 +172,7 @@ namespace EFMappingChecker
                 .MetadataProperties
                 .Where(mp => mp.Name == "KeyMembers")
                 .SelectMany(mp => mp.Value as ReadOnlyMetadataCollection<EdmMember>)
-                .OfType<EdmProperty>().Select(ep =>new { ep.Name, ep.PrimitiveType });
+                .OfType<EdmProperty>().Select(ep => new { ep.Name, ep.PrimitiveType });
 
             var parameterList = new object[primaryKeyTypes.Count()];
             var i = 0;
@@ -253,39 +240,6 @@ namespace EFMappingChecker
             }
         }
 
-        public bool GetNextDbContext(IEnumerator<Type> dbContextTypes, out DbContext nextDbContext)
-        {
-            if (dbContextTypes.MoveNext())
-            {
-                var currentType = dbContextTypes.Current;
-                var constructor = currentType.GetConstructor(new[] { typeof(string) });
-                nextDbContext = (DbContext)constructor.Invoke(new object[] { _connectionString });
-                return true;
-            }
-            else
-            {
-                nextDbContext = null;
-                return false;
-            }
-        }
-
-        public IEnumerable<Type> GetDbContextTypes(string dllFile)
-        {
-            if (File.Exists(dllFile))
-            {
-                Assembly asm = Assembly.LoadFrom(dllFile);
-                if (asm.ExportedTypes.Any(type => type.IsSubclassOf(typeof(DbContext))))
-                {
-                    var dbContextTypes = asm.ExportedTypes.Where(type => type.IsSubclassOf(typeof(DbContext)));
-                    return dbContextTypes;
-                }
-                else
-                {
-                    throw new DbContextsNotFoundException(asm.FullName);
-                }
-            }
-            throw new FileNotFoundException("Dll file not found", dllFile);
-        }
 
         private bool InExclusionList(PropertyInfo set)
         {
